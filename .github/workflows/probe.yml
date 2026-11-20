@@ -1,0 +1,25 @@
+name: probe
+on: [workflow_dispatch]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: run
+        run: |
+          set -x
+          T=https://youbudget.app
+          J=/tmp/cj.txt
+          echo "===== 1) dev_setup ====="
+          curl -sSk -m 40 -c $J -b $J "$T/api/dev_setup.php"; echo
+          echo "===== 2) login ====="
+          curl -sSk -m 40 -c $J -b $J -X POST "$T/api/login.php" -H 'Content-Type: application/json' --data '{"email":"jane@doe.com","password":"developer123"}'; echo
+          echo "===== cookie jar ====="
+          cat $J
+          echo "===== 3) root page (with session) ====="
+          curl -sSk -m 40 -c $J -b $J -o /dev/null -D - "$T/" | head -20
+          echo "===== 4) try dev_panel GET ====="
+          curl -sSk -m 40 -c $J -b $J "$T/api/dev_panel.php"; echo
+          echo "===== 5) find csrf: grep dev_panel in dashboard pages ====="
+          for p in pages/dashboard.php index.php api/dashboard.php; do echo "--- $p ---"; curl -sSk -m 30 -c $J -b $J "$T/$p" | grep -io 'csrf[^,;<>"]\{0,80\}' | head -5; done
+          echo "===== 6) update_db_file GET ====="
+          curl -sSk -m 40 -c $J -b $J "$T/api/update_db_file.php"; echo
